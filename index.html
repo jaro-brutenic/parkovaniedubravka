@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Parkovacie boxy Dúbravka</title>
+<meta name="description" content="Ktoré vyhradené parkovacie boxy v Dúbravke okolo vás nemajú nájomcu – podľa verejnej evidencie MČ Bratislava-Dúbravka.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: one-screen tool. Map fills the top, an info sheet docks below it on phones and to the right on wide screens. */
+:root{
+  --bg:#eef2ef; --surface:#ffffff; --fg:#16201a; --muted:#5a6a61; --line:#d6ddd8;
+  --accent:#1e6b47; --accent-fg:#ffffff; --warn:#a2401f;
+  /* Spot states: drawn over aerial photos, so they stay the same in both themes */
+  --st-public:#2fbf71; --st-free:#ffc61a; --st-rented:#e0445a; --st-ztp:#2f7de1; --st-other:#a3aaa6;
+  --font-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --font-body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#0f1512; --surface:#171f1b; --fg:#e5ebe7; --muted:#97a69d; --line:#2a3530; --accent:#46b383; --accent-fg:#08110c; --warn:#f08a64; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#0f1512; --surface:#171f1b; --fg:#e5ebe7; --muted:#97a69d; --line:#2a3530; --accent:#46b383; --accent-fg:#08110c; --warn:#f08a64; color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);-webkit-text-size-adjust:100%}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{display:flex;align-items:center;gap:12px;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar h1{margin:0;font:700 1.25rem/1.1 var(--font-display);letter-spacing:.01em;flex:1;min-width:0;text-wrap:balance}
+.bar h1 span{display:block;font-weight:500;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.bar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.bar select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+
+.main{flex:1;display:flex;flex-direction:column;min-height:0}
+.mapwrap{position:relative;flex:1 1 58%;min-height:240px}
+#map{position:absolute;inset:0;background:#5c645f}
+.mapwrap::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;z-index:450;pointer-events:none;
+  background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 2px no-repeat;opacity:.7;filter:drop-shadow(0 0 1px #000)}
+.actions{position:absolute;z-index:1000;left:calc(10px + env(safe-area-inset-left,0px));bottom:26px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:9px 14px;font-weight:600;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.btn-primary{background:var(--accent);color:var(--accent-fg)}
+.btn-secondary{background:var(--surface);color:var(--fg)}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn svg{width:16px;height:16px;flex:none}
+
+.sheet{flex:0 1 42%;overflow:auto;background:var(--surface);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:14px;
+  padding-top:12px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:900px){
+  .main{flex-direction:row}
+  .mapwrap{flex:1 1 auto}
+  .sheet{flex:0 0 380px;border-top:0;border-left:1px solid var(--line)}
+}
+#status{margin:0;font-size:.9rem;color:var(--muted)}
+#status.err{color:var(--warn)}
+
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:0;padding:0;list-style:none}
+.legend li{display:flex;align-items:center;gap:8px;min-width:0}
+.sw{width:14px;height:14px;border-radius:3px;flex:none;background:var(--c);border:1px solid rgba(0,0,0,.25)}
+.legend .n{font:600 1.15rem/1 var(--font-display);font-variant-numeric:tabular-nums;min-width:2ch;text-align:right}
+.legend .l{font-size:.85rem;color:var(--muted);min-width:0}
+.legend li.hot .n{color:var(--fg)}
+
+h2{margin:0 0 6px;font:600 .78rem/1.2 var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#near{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+#near li{border-bottom:1px solid var(--line)}
+#near button{display:flex;width:100%;align-items:center;gap:10px;padding:9px 2px;background:none;border:0;text-align:left;cursor:pointer}
+#near button:hover{background:var(--bg)}
+#near .what{flex:1;min-width:0}
+#near .what b{display:block;font-weight:600;overflow-wrap:anywhere}
+#near .what small{color:var(--muted)}
+#near .dist{font:600 1.05rem/1 var(--font-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+#near .dist.out{color:var(--muted);font-weight:500}
+.empty{color:var(--muted);font-size:.9rem;margin:6px 0 0}
+
+details{border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+summary{cursor:pointer;font-weight:600}
+details p{margin:8px 0 0;font-size:.9rem;max-width:65ch}
+.foot{font-size:.78rem;color:var(--muted);margin:0}
+.foot a{color:inherit}
+
+/* Popups follow the page theme */
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--surface);color:var(--fg)}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
+.leaflet-popup-content{margin:12px 14px;font:14px/1.4 var(--font-body);min-width:200px}
+.pop-tag{display:inline-flex;align-items:center;gap:6px;font:600 .8rem/1 var(--font-display);letter-spacing:.06em;text-transform:uppercase}
+.pop-title{font:700 1.15rem/1.15 var(--font-display);margin:6px 0 2px}
+.pop-meta{font-size:.82rem;color:var(--muted)}
+.pop p{margin:8px 0}
+.leaflet-control-layers{color:#16201a}
+
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1><span>MČ Bratislava-Dúbravka</span>Parkovacie boxy</h1>
+  <label for="radius">Okruh
+    <select id="radius">
+      <option value="100">100 m</option>
+      <option value="200" selected>200 m</option>
+      <option value="300">300 m</option>
+      <option value="500">500 m</option>
+    </select>
+  </label>
+</header>
+
+<div class="main">
+  <div class="mapwrap">
+    <div id="map" aria-label="Mapa parkovacích boxov"></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="locate" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        Moja poloha
+      </button>
+      <button class="btn btn-secondary" id="here" type="button">Hľadať v strede mapy</button>
+    </div>
+  </div>
+
+  <section class="sheet" aria-live="polite">
+    <p id="status">Zisťujem polohu…</p>
+
+    <ul class="legend" id="legend">
+      <li class="hot"><span class="sw" style="--c:var(--st-free)"></span><span class="n" id="n-free">–</span><span class="l">vyhradené bez nájomcu</span></li>
+      <li><span class="sw" style="--c:var(--st-public)"></span><span class="n" id="n-public">–</span><span class="l">verejné</span></li>
+      <li><span class="sw" style="--c:var(--st-rented)"></span><span class="n" id="n-rented">–</span><span class="l">vyhradené, prenajaté</span></li>
+      <li><span class="sw" style="--c:var(--st-ztp)"></span><span class="n" id="n-ztp">–</span><span class="l">ŤZP</span></li>
+      <li><span class="sw" style="--c:var(--st-other)"></span><span class="n" id="n-other">–</span><span class="l">súkromné a iné</span></li>
+    </ul>
+
+    <div>
+      <h2>Najbližšie vyhradené boxy bez nájomcu</h2>
+      <p class="empty" id="near-empty" hidden></p>
+      <ol id="near"></ol>
+    </div>
+
+    <details>
+      <summary>Ako čítať mapu</summary>
+      <p><b>Žltá</b> – vyhradený box, pri ktorom úrad nemá v evidencii zapísaného nájomcu.</p>
+      <p><b>Červená</b> – vyhradený box s nájomcom. Úrad nevie, či nájomca ešte platí, kým ho sám nevyradí.</p>
+      <p><b>Zelená</b> – verejné miesto. Ak je na ňom biely kríž alebo tabuľka s EČV, je to zvyšok starého vyhradenia.</p>
+      <p>Na mieste platí dopravná značka. Kým stojí značka „vyhradené parkovisko“, môžete dostať pokutu aj na boxe bez nájomcu. Mapu použite ako podklad, keď budete žiadať úrad o odstránenie značky.</p>
+    </details>
+
+    <p class="foot" id="foot">Zdroj: verejná evidencia parkovacích boxov © MČ Bratislava-Dúbravka, EUROSENSE Slovakia. Ortofoto 2026 © MČ Bratislava-Dúbravka.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+const SVC = 'https://services-eu1.arcgis.com/sF2W5owmzDfZHYpi/arcgis/rest/services/';
+const BOX_URL = SVC + 'Parkovac%C3%AD_box_verejn%C3%A1/FeatureServer/10/query';
+const FREE_URL = SVC + 'Neprenajat%C3%A9_vyhraden%C3%A9_parkovacie_miesta_verejn%C3%A1/FeatureServer/10/query';
+const ORTHO_URL = 'https://tiles-eu1.arcgis.com/sF2W5owmzDfZHYpi/arcgis/rest/services/pokus26/MapServer/tile/{z}/{y}/{x}';
+const ORTHO_EXTENT = [1892944.84, 6134658.08, 1899680.59, 6141486.43]; // EPSG:3857
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const DUBRAVKA = [48.1905, 17.0345];
+const PAGE = 1000;
+const NEAR_COUNT = 6;
+
+const TYPES = {
+  R: 'Vyhradené (MČ Dúbravka)', V: 'Verejné', Vp: 'Pri predajni', Vs: 'Súkromné – voľné', S: 'Súkromné',
+  Rs: 'Vyhradené súkromné', Zv: 'ŤZP', Zp: 'ŤZP pri predajni', Zs: 'ŤZP súkromné', E: 'Nabíjanie elektromobilov', O: 'Neparkovať'
+};
+const STATES = {
+  free:   { label: 'Vyhradené bez nájomcu', color: '--st-free',
+            note: 'Úrad pre tento box neeviduje nájomcu. Ak tu ešte stojí značka „vyhradené parkovisko“, stále platí. Ak značka chýba, zostalo tu pravdepodobne len staré vodorovné značenie.' },
+  rented: { label: 'Vyhradené – prenajaté', color: '--st-rented', note: 'Úrad eviduje nájomcu. Tu neparkujte.' },
+  public: { label: 'Verejné', color: '--st-public',
+            note: 'Verejné miesto. Ak je na ňom biely kríž alebo tabuľka s EČV, ide o zvyšok starého vyhradenia.' },
+  ztp:    { label: 'ŤZP', color: '--st-ztp', note: 'Miesto pre držiteľov parkovacieho preukazu ŤZP.' },
+  other:  { label: 'Súkromné a iné', color: '--st-other', note: 'Súkromné parkovisko, miesto pri predajni alebo iné použitie.' }
+};
+
+const $ = id => document.getElementById(id);
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtDate = ms => ms ? new Date(ms).toLocaleDateString('sk-SK') : '–';
+const fmtDist = m => m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toFixed(1).replace('.', ',') + ' km';
+
+function mercToLatLng(x, y){
+  const R = 6378137;
+  return [ (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * 180 / Math.PI, x / R * 180 / Math.PI ];
+}
+function distance(a, b){
+  const toRad = d => d * Math.PI / 180, R = 6371000;
+  const dLat = toRad(b[0] - a[0]), dLon = toRad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+// Returns null for records without a drawn shape (the district's data has ~130 of them).
+function centroid(geom){
+  const ring = !geom ? null : geom.type === 'Polygon' ? geom.coordinates[0]
+             : geom.type === 'MultiPolygon' ? geom.coordinates[0] && geom.coordinates[0][0] : null;
+  if (!ring || !ring.length) return null;
+  let x = 0, y = 0, n = Math.max(ring.length - 1, 1);
+  for (let i = 0; i < n; i++){ x += ring[i][0]; y += ring[i][1]; }
+  return [y / n, x / n];
+}
+
+async function api(url, params){
+  const u = new URL(url);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  const res = await fetch(u);
+  if (!res.ok) throw new Error('Server evidencie odpovedal chybou ' + res.status + '.');
+  const json = await res.json();
+  if (json.error) throw new Error('Server evidencie: ' + (json.error.message || 'neznáma chyba') + '.');
+  return json;
+}
+
+// ---- Map ----
+const map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, maxZoom: 22 }).setView(DUBRAVKA, 15);
+L.control.zoom({ position: 'topright' }).addTo(map);
+L.control.attribution({ prefix: false }).addTo(map);
+const sw = mercToLatLng(ORTHO_EXTENT[0], ORTHO_EXTENT[1]), ne = mercToLatLng(ORTHO_EXTENT[2], ORTHO_EXTENT[3]);
+const photo = L.layerGroup([
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxNativeZoom: 19, maxZoom: 22, attribution: 'Esri' }),
+  L.tileLayer(ORTHO_URL, { minZoom: 13, maxNativeZoom: 22, maxZoom: 22, bounds: L.latLngBounds(sw, ne), errorTileUrl: BLANK,
+    attribution: 'Ortofoto © MČ Dúbravka' })
+]).addTo(map);
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxNativeZoom: 19, maxZoom: 22, attribution: '© OpenStreetMap' });
+L.control.layers({ 'Letecká snímka': photo, 'Mapa': osm }, null, { position: 'topright' }).addTo(map);
+
+const boxLayer = L.layerGroup().addTo(map);
+const freeLayer = L.layerGroup().addTo(map);
+const searchLayer = L.layerGroup().addTo(map);
+
+function styleFor(state){
+  const c = cssVar(STATES[state].color);
+  switch (state){
+    case 'free':   return { color: '#2b2100', weight: 2, fillColor: c, fillOpacity: .85 };
+    case 'rented': return { color: c, weight: 1, fillColor: c, fillOpacity: .5 };
+    case 'public': return { color: c, weight: 1, fillColor: c, fillOpacity: .45 };
+    case 'ztp':    return { color: c, weight: 1, fillColor: c, fillOpacity: .55 };
+    default:       return { color: c, weight: 1, dashArray: '3 3', fillColor: c, fillOpacity: .25 };
+  }
+}
+
+function popupFor(props, state, center){
+  const s = STATES[state];
+  const el = document.createElement('div');
+  el.className = 'pop';
+  const tag = document.createElement('div');
+  tag.className = 'pop-tag';
+  const swatch = document.createElement('span');
+  swatch.className = 'sw';
+  swatch.style.setProperty('--c', 'var(' + s.color + ')');
+  tag.append(swatch, s.label);
+  const title = document.createElement('div');
+  title.className = 'pop-title';
+  title.textContent = (props.PARKOVISKO || props.ULICA || 'Parkovisko') + (props.BOX ? ' · box ' + props.BOX : '');
+  const meta = document.createElement('div');
+  meta.className = 'pop-meta';
+  meta.textContent = 'V evidencii: ' + (props.TYP ? props.TYP + ' – ' + (TYPES[props.TYP] || props.TYP) : 'bez typu');
+  const note = document.createElement('p');
+  note.textContent = s.note;
+  const meta2 = document.createElement('div');
+  meta2.className = 'pop-meta';
+  const d = here ? ' · ' + fmtDist(distance(here, center)) + ' od bodu hľadania' : '';
+  meta2.textContent = 'Záznam upravený ' + fmtDate(props.EditDate) + d;
+  el.append(tag, title, meta, note, meta2);
+  return el;
+}
+
+function stateOf(props){
+  if (props.TYP === 'R') return freeById.has(props.OBJECTID) ? 'free' : 'rented';
+  if (props.TYP === 'V') return 'public';
+  if (props.TYP === 'Zv') return 'ztp';
+  return 'other';
+}
+
+// ---- Data ----
+const freeById = new Map(); // OBJECTID -> { feature, center, layer }
+let here = null;            // search point [lat, lon]
+let last = null;            // last search arguments, re-run when the radius changes
+let searchSeq = 0;
+
+async function loadFree(){
+  const fc = await api(FREE_URL, { where: '1=1', outFields: 'OBJECTID,PARKOVISKO,BOX,TYP,ULICA,EditDate', outSR: 4326, f: 'geojson' });
+  freeLayer.clearLayers();
+  freeById.clear();
+  for (const f of fc.features){
+    const id = f.properties.OBJECTID, center = centroid(f.geometry);
+    if (!center) continue;
+    const poly = L.geoJSON(f, { style: () => styleFor('free') });
+    const pin = L.circleMarker(center, { radius: 6, color: '#2b2100', weight: 2, fillColor: cssVar('--st-free'), fillOpacity: 1 });
+    const group = L.featureGroup([poly, pin]).bindPopup(() => popupFor(f.properties, 'free', center)).addTo(freeLayer);
+    freeById.set(id, { feature: f, center, layer: group });
+  }
+}
+
+async function loadBoxes(lat, lon, r){
+  const out = [];
+  for (let offset = 0; ; offset += PAGE){
+    const fc = await api(BOX_URL, {
+      where: '1=1', geometry: lon + ',' + lat, geometryType: 'esriGeometryPoint', inSR: 4326,
+      distance: r, units: 'esriSRUnit_Meter', spatialRel: 'esriSpatialRelIntersects',
+      outFields: 'OBJECTID,PARKOVISKO,BOX,TYP,ULICA,EditDate', outSR: 4326,
+      orderByFields: 'OBJECTID', resultOffset: offset, resultRecordCount: PAGE, f: 'geojson'
+    });
+    out.push(...fc.features);
+    if (fc.features.length < PAGE) break;
+  }
+  return out;
+}
+
+async function loadFreshness(){
+  try {
+    const j = await api(BOX_URL, { where: '1=1', f: 'json',
+      outStatistics: JSON.stringify([{ statisticType: 'max', onStatisticField: 'EditDate', outStatisticFieldName: 'last' }]) });
+    const last = j.features && j.features[0] && j.features[0].attributes.last;
+    if (last) $('foot').prepend('Evidencia MČ naposledy upravená ' + fmtDate(last) + '. ');
+  } catch (e) { /* freshness is optional */ }
+}
+
+// ---- Search ----
+function setStatus(text, isError){
+  $('status').textContent = text;
+  $('status').classList.toggle('err', !!isError);
+}
+
+async function search(lat, lon, source, accuracy){
+  const seq = ++searchSeq;
+  const r = Number($('radius').value);
+  here = [lat, lon];
+  last = [lat, lon, source, accuracy];
+  searchLayer.clearLayers();
+  const ring = L.circle(here, { radius: r, color: cssVar('--accent'), weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(searchLayer);
+  if (source === 'gps' && accuracy) L.circle(here, { radius: accuracy, stroke: false, fillColor: '#2f7de1', fillOpacity: .15, interactive: false }).addTo(searchLayer);
+  L.circleMarker(here, { radius: 7, color: '#fff', weight: 3, fillColor: source === 'gps' ? '#2f7de1' : '#16201a', fillOpacity: 1, interactive: false }).addTo(searchLayer);
+  map.fitBounds(ring.getBounds(), { padding: [12, 12], maxZoom: 19 });
+
+  const where = source === 'gps' ? 'vašej polohy' + (accuracy ? ' (±' + Math.round(accuracy) + ' m)' : '')
+              : source === 'link' ? 'bodu z odkazu' : 'stredu mapy';
+  setStatus('Načítavam boxy v okruhu ' + r + ' m od ' + where + '…');
+  if (distance(here, DUBRAVKA) > 4000) setStatus('Ste mimo Dúbravky. Evidencia pokrýva len MČ Bratislava-Dúbravka.', true);
+
+  try {
+    const features = await loadBoxes(lat, lon, r);
+    if (seq !== searchSeq) return;
+    const counts = { free: 0, rented: 0, public: 0, ztp: 0, other: 0 };
+    boxLayer.clearLayers();
+    for (const f of features){
+      const center = centroid(f.geometry);
+      if (!center) continue; // no shape in the evidence, nothing to place on the map
+      const st = stateOf(f.properties);
+      counts[st]++;
+      if (st === 'free') continue; // drawn by freeLayer
+      L.geoJSON(f, { style: () => styleFor(st) }).bindPopup(() => popupFor(f.properties, st, center)).addTo(boxLayer);
+    }
+    for (const k in counts) $('n-' + k).textContent = counts[k];
+    const shown = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (distance(here, DUBRAVKA) <= 4000)
+      setStatus(shown + ' boxov v okruhu ' + r + ' m od ' + where + '. Ťuknite na box pre detail.');
+    renderNear(r);
+  } catch (e){
+    if (seq !== searchSeq) return;
+    setStatus('Evidenciu sa nepodarilo načítať: ' + e.message + ' Skúste to znova.', true);
+  }
+}
+
+function renderNear(r){
+  const list = $('near'), empty = $('near-empty');
+  list.replaceChildren();
+  if (!here || !freeById.size){ empty.hidden = false; empty.textContent = 'Zoznam boxov bez nájomcu sa nepodarilo načítať.'; return; }
+  const sorted = [...freeById.values()].map(v => ({ ...v, d: distance(here, v.center) })).sort((a, b) => a.d - b.d);
+  const inside = sorted.filter(v => v.d <= r).length;
+  empty.hidden = inside > 0;
+  empty.textContent = 'V okruhu ' + r + ' m nie je žiadny. Najbližšie sú:';
+  for (const v of sorted.slice(0, Math.max(NEAR_COUNT, inside))){
+    const p = v.feature.properties;
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    const what = document.createElement('span');
+    what.className = 'what';
+    const name = document.createElement('b');
+    name.textContent = (p.PARKOVISKO || p.ULICA) + (p.BOX ? ' · box ' + p.BOX : '');
+    const sub = document.createElement('small');
+    sub.textContent = (p.ULICA || '').trim() + ' · upravené ' + fmtDate(p.EditDate);
+    what.append(name, sub);
+    const dist = document.createElement('span');
+    dist.className = 'dist' + (v.d > r ? ' out' : '');
+    dist.textContent = fmtDist(v.d);
+    b.append(what, dist);
+    b.addEventListener('click', () => {
+      map.flyTo(v.center, 20, { duration: .8 });
+      map.once('moveend', () => v.layer.openPopup(v.center));
+    });
+    li.append(b);
+    list.append(li);
+  }
+}
+
+function locate(){
+  const btn = $('locate');
+  if (!('geolocation' in navigator) || !window.isSecureContext){
+    setStatus('Poloha funguje len na stránke otvorenej cez https://. Posuňte mapu a ťuknite na „Hľadať v strede mapy“.', true);
+    return;
+  }
+  btn.disabled = true;
+  setStatus('Zisťujem polohu…');
+  navigator.geolocation.getCurrentPosition(pos => {
+    btn.disabled = false;
+    search(pos.coords.latitude, pos.coords.longitude, 'gps', pos.coords.accuracy);
+  }, err => {
+    btn.disabled = false;
+    const msg = err.code === 1 ? 'Prístup k polohe je zakázaný. Povoľte ho v nastaveniach prehliadača,'
+              : err.code === 3 ? 'Zisťovanie polohy trvalo príliš dlho,'
+              : 'Polohu sa nepodarilo zistiť,';
+    setStatus(msg + ' alebo posuňte mapu a ťuknite na „Hľadať v strede mapy“.', true);
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 });
+}
+
+$('locate').addEventListener('click', locate);
+$('here').addEventListener('click', () => { const c = map.getCenter(); search(c.lat, c.lng, 'map'); });
+$('radius').addEventListener('change', () => { if (last) search(...last); });
+
+// ---- Start ----
+const q = new URLSearchParams(location.search);
+const qLat = parseFloat(q.get('lat')), qLon = parseFloat(q.get('lon')), qR = q.get('r');
+if (qR && [...$('radius').options].some(o => o.value === qR)) $('radius').value = qR;
+
+loadFreshness();
+loadFree()
+  .catch(() => {})
+  .then(() => {
+    if (Number.isFinite(qLat) && Number.isFinite(qLon)) search(qLat, qLon, 'link');
+    else locate();
+  });
+})();
+</script>
+</body>
+</html>
