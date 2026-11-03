@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-/* Layout: one-screen tool. Map fills the top, an info sheet docks below it on phones and to the right on wide screens. */
+/* Layout: one-screen tool. The map fills everything under the header; details slide up from the bottom (right on wide screens) behind an (i) button. */
 :root{
   --bg:#eef2ef; --surface:#ffffff; --fg:#16201a; --muted:#5a6a61; --line:#d6ddd8;
   --accent:#1e6b47; --accent-fg:#ffffff; --warn:#a2401f;
@@ -39,26 +39,43 @@ button,select{font:inherit;color:inherit}
 .bar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
 .bar select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 
-.main{flex:1;display:flex;flex-direction:column;min-height:0}
-.mapwrap{position:relative;flex:1 1 58%;min-height:240px}
+.main{flex:1;display:flex;position:relative;min-height:0;overflow:hidden}
+.mapwrap{position:relative;flex:1;min-height:0}
 #map{position:absolute;inset:0;background:#5c645f}
-.mapwrap::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;z-index:450;pointer-events:none;
-  background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 2px no-repeat;opacity:.7;filter:drop-shadow(0 0 1px #000)}
-.actions{position:absolute;z-index:1000;left:calc(10px + env(safe-area-inset-left,0px));bottom:26px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+/* Pin marking the map center, where "Hľadať tu" searches; its tip sits exactly on the center */
+.center-pin{position:absolute;left:50%;top:50%;width:32px;height:42px;margin:-41px 0 0 -16px;z-index:450;pointer-events:none;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
+.center-pin path{fill:var(--accent);stroke:#fff;stroke-width:2.5}
+.center-pin circle{fill:#fff}
+.actions{position:absolute;z-index:1000;left:calc(10px + env(safe-area-inset-left,0px));bottom:26px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 76px)}
+.info-btn{position:absolute;z-index:1000;right:calc(10px + env(safe-area-inset-right,0px));bottom:26px;width:44px;height:44px;border:0;border-radius:50%;
+  display:grid;place-items:center;background:var(--surface);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer}
+.info-btn svg{width:22px;height:22px}
+.info-btn[aria-expanded="true"]{background:var(--accent);color:var(--accent-fg)}
+.toast{position:absolute;z-index:1000;left:calc(10px + env(safe-area-inset-left,0px));top:10px;width:max-content;max-width:calc(100% - 80px);
+  background:var(--surface);color:var(--fg);border-radius:10px;padding:7px 12px;font-size:.88rem;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none}
+.toast.err{color:var(--warn)}
 .btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:9px 14px;font-weight:600;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .btn-primary{background:var(--accent);color:var(--accent-fg)}
 .btn-secondary{background:var(--surface);color:var(--fg)}
 .btn:disabled{opacity:.6;cursor:progress}
 .btn svg{width:16px;height:16px;flex:none}
 
-.sheet{flex:0 1 42%;overflow:auto;background:var(--surface);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:14px;
-  padding-top:12px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet{position:absolute;z-index:1100;left:0;right:0;bottom:0;max-height:75%;overflow:auto;background:var(--surface);
+  border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.3);
+  display:flex;flex-direction:column;gap:14px;
+  padding-top:8px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  transform:translateY(105%);visibility:hidden;transition:transform .25s ease,visibility 0s linear .25s}
+.sheet.open{transform:none;visibility:visible;transition:transform .25s ease}
 @media (min-width:900px){
-  .main{flex-direction:row}
-  .mapwrap{flex:1 1 auto}
-  .sheet{flex:0 0 380px;border-top:0;border-left:1px solid var(--line)}
+  .sheet{left:auto;top:0;width:380px;max-height:none;border-radius:0;border-top:0;border-left:1px solid var(--line);transform:translateX(105%)}
 }
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-8px;z-index:1;
+  margin-top:-8px;padding-block:8px 4px;background:var(--surface)}
+.sheet-head strong{font:700 1.1rem/1.2 var(--font-display)}
+.sheet-head button{width:36px;height:36px;border:0;border-radius:50%;background:var(--bg);display:grid;place-items:center;cursor:pointer}
+.sheet-head svg{width:18px;height:18px}
 #status{margin:0;font-size:.9rem;color:var(--muted)}
 #status.err{color:var(--warn)}
 
@@ -116,16 +133,27 @@ details p{margin:8px 0 0;font-size:.9rem;max-width:65ch}
 <div class="main">
   <div class="mapwrap">
     <div id="map" aria-label="Mapa parkovacích boxov"></div>
+    <svg class="center-pin" viewBox="0 0 32 42" aria-hidden="true"><path d="M16 1.5C8 1.5 1.5 7.8 1.5 15.6c0 10.2 12.2 23 13.3 24.1a1.6 1.6 0 0 0 2.4 0c1.1-1.1 13.3-13.9 13.3-24.1C30.5 7.8 24 1.5 16 1.5z"/><circle cx="16" cy="15.5" r="5.5"/></svg>
     <div class="actions">
       <button class="btn btn-primary" id="locate" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
         Moja poloha
       </button>
-      <button class="btn btn-secondary" id="here" type="button">Hľadať v strede mapy</button>
+      <button class="btn btn-secondary" id="here" type="button" title="Hľadať okolo špendlíka v strede mapy">Hľadať tu</button>
     </div>
+    <button class="info-btn" id="info" type="button" aria-label="Podrobnosti" aria-expanded="false" aria-controls="sheet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg>
+    </button>
+    <div class="toast" id="toast" role="status" aria-live="polite">Zisťujem polohu…</div>
   </div>
 
-  <section class="sheet" aria-live="polite">
+  <section class="sheet" id="sheet" aria-label="Podrobnosti">
+    <div class="sheet-head">
+      <strong>Podrobnosti</strong>
+      <button id="sheet-close" type="button" aria-label="Zavrieť">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
     <p id="status">Zisťujem polohu…</p>
 
     <ul class="legend" id="legend">
@@ -326,9 +354,19 @@ async function loadFreshness(){
 }
 
 // ---- Search ----
-function setStatus(text, isError){
+// kind: 'busy' and 'error' also show on the map; 'ok' only in the details sheet
+function setStatus(text, kind){
   $('status').textContent = text;
-  $('status').classList.toggle('err', !!isError);
+  $('status').classList.toggle('err', kind === 'error');
+  const toast = $('toast');
+  toast.textContent = text;
+  toast.classList.toggle('err', kind === 'error');
+  toast.hidden = kind === 'ok';
+}
+
+function setSheet(open){
+  $('sheet').classList.toggle('open', open);
+  $('info').setAttribute('aria-expanded', open);
 }
 
 async function search(lat, lon, source, accuracy){
@@ -344,8 +382,8 @@ async function search(lat, lon, source, accuracy){
 
   const where = source === 'gps' ? 'vašej polohy' + (accuracy ? ' (±' + Math.round(accuracy) + ' m)' : '')
               : source === 'link' ? 'bodu z odkazu' : 'stredu mapy';
-  setStatus('Načítavam boxy v okruhu ' + r + ' m od ' + where + '…');
-  if (distance(here, DUBRAVKA) > 4000) setStatus('Ste mimo Dúbravky. Evidencia pokrýva len MČ Bratislava-Dúbravka.', true);
+  setStatus('Načítavam boxy v okruhu ' + r + ' m od ' + where + '…', 'busy');
+  if (distance(here, DUBRAVKA) > 4000) setStatus('Ste mimo Dúbravky. Evidencia pokrýva len MČ Bratislava-Dúbravka.', 'error');
 
   try {
     const features = await loadBoxes(lat, lon, r);
@@ -363,11 +401,11 @@ async function search(lat, lon, source, accuracy){
     for (const k in counts) $('n-' + k).textContent = counts[k];
     const shown = Object.values(counts).reduce((a, b) => a + b, 0);
     if (distance(here, DUBRAVKA) <= 4000)
-      setStatus(shown + ' boxov v okruhu ' + r + ' m od ' + where + '. Ťuknite na box pre detail.');
+      setStatus(shown + ' boxov v okruhu ' + r + ' m od ' + where + '. Ťuknite na box pre detail.', 'ok');
     renderNear(r);
   } catch (e){
     if (seq !== searchSeq) return;
-    setStatus('Evidenciu sa nepodarilo načítať: ' + e.message + ' Skúste to znova.', true);
+    setStatus('Evidenciu sa nepodarilo načítať: ' + e.message + ' Skúste to znova.', 'error');
   }
 }
 
@@ -396,6 +434,7 @@ function renderNear(r){
     dist.textContent = fmtDist(v.d);
     b.append(what, dist);
     b.addEventListener('click', () => {
+      setSheet(false);
       map.flyTo(v.center, 20, { duration: .8 });
       map.once('moveend', () => v.layer.openPopup(v.center));
     });
@@ -407,11 +446,11 @@ function renderNear(r){
 function locate(){
   const btn = $('locate');
   if (!('geolocation' in navigator) || !window.isSecureContext){
-    setStatus('Poloha funguje len na stránke otvorenej cez https://. Posuňte mapu a ťuknite na „Hľadať v strede mapy“.', true);
+    setStatus('Poloha funguje len na stránke otvorenej cez https://. Posuňte mapu a ťuknite na „Hľadať tu“.', 'error');
     return;
   }
   btn.disabled = true;
-  setStatus('Zisťujem polohu…');
+  setStatus('Zisťujem polohu…', 'busy');
   navigator.geolocation.getCurrentPosition(pos => {
     btn.disabled = false;
     search(pos.coords.latitude, pos.coords.longitude, 'gps', pos.coords.accuracy);
@@ -420,13 +459,16 @@ function locate(){
     const msg = err.code === 1 ? 'Prístup k polohe je zakázaný. Povoľte ho v nastaveniach prehliadača,'
               : err.code === 3 ? 'Zisťovanie polohy trvalo príliš dlho,'
               : 'Polohu sa nepodarilo zistiť,';
-    setStatus(msg + ' alebo posuňte mapu a ťuknite na „Hľadať v strede mapy“.', true);
+    setStatus(msg + ' alebo posuňte mapu a ťuknite na „Hľadať tu“.', 'error');
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 });
 }
 
 $('locate').addEventListener('click', locate);
 $('here').addEventListener('click', () => { const c = map.getCenter(); search(c.lat, c.lng, 'map'); });
 $('radius').addEventListener('change', () => { if (last) search(...last); });
+$('info').addEventListener('click', () => setSheet(!$('sheet').classList.contains('open')));
+$('sheet-close').addEventListener('click', () => setSheet(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setSheet(false); });
 
 // ---- Start ----
 const q = new URLSearchParams(location.search);
