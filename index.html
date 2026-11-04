@@ -28,7 +28,7 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);-webkit-text-size-adjust:100%}
-button,select{font:inherit;color:inherit}
+button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .bar{display:flex;align-items:center;gap:12px;background:var(--surface);border-bottom:1px solid var(--line);
@@ -36,15 +36,15 @@ button,select{font:inherit;color:inherit}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .bar h1{margin:0;font:700 1.25rem/1.1 var(--font-display);letter-spacing:.01em;flex:1;min-width:0;text-wrap:balance}
 .bar h1 span{display:block;font-weight:500;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.bar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
-.bar select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 
 .main{flex:1;display:flex;position:relative;min-height:0;overflow:hidden}
 .mapwrap{position:relative;flex:1;min-height:0}
 #map{position:absolute;inset:0;background:#5c645f}
 /* Pin marking the map center, where "Hľadať tu" searches; its tip sits exactly on the center */
 .center-pin{position:absolute;left:50%;top:50%;width:32px;height:42px;margin:-41px 0 0 -16px;z-index:450;pointer-events:none;
-  filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));transition:opacity .15s}
+/* Leaflet draws popups inside the map layer (z-index 400), under the pin and the toast, so both step aside while one is open */
+.popup-open .center-pin,.popup-open .toast{opacity:0}
 .center-pin path{fill:var(--accent);stroke:#fff;stroke-width:2.5}
 .center-pin circle{fill:#fff}
 .actions{position:absolute;z-index:1000;left:calc(10px + env(safe-area-inset-left,0px));bottom:26px;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 76px)}
@@ -86,21 +86,6 @@ button,select{font:inherit;color:inherit}
 .legend .l{font-size:.85rem;color:var(--muted);min-width:0}
 .legend li.hot .n{color:var(--fg)}
 
-h2{margin:0 0 6px;font:600 .78rem/1.2 var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-#near{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-#near li{border-bottom:1px solid var(--line)}
-#near button{display:flex;width:100%;align-items:center;gap:10px;padding:9px 2px;background:none;border:0;text-align:left;cursor:pointer}
-#near button:hover{background:var(--bg)}
-#near .what{flex:1;min-width:0}
-#near .what b{display:block;font-weight:600;overflow-wrap:anywhere}
-#near .what small{color:var(--muted)}
-#near .dist{font:600 1.05rem/1 var(--font-display);font-variant-numeric:tabular-nums;white-space:nowrap}
-#near .dist.out{color:var(--muted);font-weight:500}
-.empty{color:var(--muted);font-size:.9rem;margin:6px 0 0}
-
-details{border:1px solid var(--line);border-radius:10px;padding:8px 12px}
-summary{cursor:pointer;font-weight:600}
-details p{margin:8px 0 0;font-size:.9rem;max-width:65ch}
 .foot{font-size:.78rem;color:var(--muted);margin:0}
 .foot a{color:inherit}
 
@@ -120,14 +105,6 @@ details p{margin:8px 0 0;font-size:.9rem;max-width:65ch}
 <body>
 <header class="bar">
   <h1><span>MČ Bratislava-Dúbravka</span>Parkovacie boxy</h1>
-  <label for="radius">Okruh
-    <select id="radius">
-      <option value="100">100 m</option>
-      <option value="200" selected>200 m</option>
-      <option value="300">300 m</option>
-      <option value="500">500 m</option>
-    </select>
-  </label>
 </header>
 
 <div class="main">
@@ -164,20 +141,6 @@ details p{margin:8px 0 0;font-size:.9rem;max-width:65ch}
       <li><span class="sw" style="--c:var(--st-other)"></span><span class="n" id="n-other">–</span><span class="l">súkromné a iné</span></li>
     </ul>
 
-    <div>
-      <h2>Najbližšie vyhradené boxy bez nájomcu</h2>
-      <p class="empty" id="near-empty" hidden></p>
-      <ol id="near"></ol>
-    </div>
-
-    <details>
-      <summary>Ako čítať mapu</summary>
-      <p><b>Žltá</b> – vyhradený box, pri ktorom úrad nemá v evidencii zapísaného nájomcu.</p>
-      <p><b>Červená</b> – vyhradený box s nájomcom. Úrad nevie, či nájomca ešte platí, kým ho sám nevyradí.</p>
-      <p><b>Zelená</b> – verejné miesto. Ak je na ňom biely kríž alebo tabuľka s EČV, je to zvyšok starého vyhradenia.</p>
-      <p>Na mieste platí dopravná značka. Kým stojí značka „vyhradené parkovisko“, môžete dostať pokutu aj na boxe bez nájomcu. Mapu použite ako podklad, keď budete žiadať úrad o odstránenie značky.</p>
-    </details>
-
     <p class="foot" id="foot">Zdroj: verejná evidencia parkovacích boxov © MČ Bratislava-Dúbravka, EUROSENSE Slovakia. Ortofoto 2026 © MČ Bratislava-Dúbravka.</p>
   </section>
 </div>
@@ -194,8 +157,9 @@ const ORTHO_URL = 'https://tiles-eu1.arcgis.com/sF2W5owmzDfZHYpi/arcgis/rest/ser
 const ORTHO_EXTENT = [1892944.84, 6134658.08, 1899680.59, 6141486.43]; // EPSG:3857
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 const DUBRAVKA = [48.1905, 17.0345];
+const CLOSE_ZOOM = 18.5; // close enough to tell individual parking spaces apart on a phone
+const RADIUS = 200;      // search radius in metres
 const PAGE = 1000;
-const NEAR_COUNT = 6;
 
 const TYPES = {
   R: 'Vyhradené (MČ Dúbravka)', V: 'Verejné', Vp: 'Pri predajni', Vs: 'Súkromné – voľné', S: 'Súkromné',
@@ -215,6 +179,7 @@ const $ = id => document.getElementById(id);
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmtDate = ms => ms ? new Date(ms).toLocaleDateString('sk-SK') : '–';
 const fmtDist = m => m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toFixed(1).replace('.', ',') + ' km';
+const inDubravka = p => distance(p, DUBRAVKA) <= 4000;
 
 function mercToLatLng(x, y){
   const R = 6378137;
@@ -247,7 +212,7 @@ async function api(url, params){
 }
 
 // ---- Map ----
-const map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, maxZoom: 22 }).setView(DUBRAVKA, 15);
+const map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, maxZoom: 22, zoomSnap: .5 }).setView(DUBRAVKA, CLOSE_ZOOM);
 L.control.zoom({ position: 'topright' }).addTo(map);
 L.control.attribution({ prefix: false }).addTo(map);
 const sw = mercToLatLng(ORTHO_EXTENT[0], ORTHO_EXTENT[1]), ne = mercToLatLng(ORTHO_EXTENT[2], ORTHO_EXTENT[3]);
@@ -264,6 +229,11 @@ L.control.layers({ 'Letecká snímka': photo, 'Mapa': osm }, null, { position: '
 const boxLayer = L.layerGroup().addTo(map);
 const freeLayer = L.layerGroup().addTo(map);
 const searchLayer = L.layerGroup().addTo(map);
+// Keep popups clear of the buttons along the right edge and at the bottom
+L.Popup.mergeOptions({ autoPanPaddingBottomRight: [56, 70] });
+const mapwrap = document.querySelector('.mapwrap');
+map.on('popupopen', () => mapwrap.classList.add('popup-open'));
+map.on('popupclose', () => mapwrap.classList.remove('popup-open'));
 
 function styleFor(state){
   const c = cssVar(STATES[state].color);
@@ -303,29 +273,28 @@ function popupFor(props, state, center){
 }
 
 function stateOf(props){
-  if (props.TYP === 'R') return freeById.has(props.OBJECTID) ? 'free' : 'rented';
+  if (props.TYP === 'R') return freeIds.has(props.OBJECTID) ? 'free' : 'rented';
   if (props.TYP === 'V') return 'public';
   if (props.TYP === 'Zv') return 'ztp';
   return 'other';
 }
 
 // ---- Data ----
-const freeById = new Map(); // OBJECTID -> { feature, center, layer }
+const freeIds = new Set();  // OBJECTIDs of reserved spots without a tenant
 let here = null;            // search point [lat, lon]
-let last = null;            // last search arguments, re-run when the radius changes
 let searchSeq = 0;
 
 async function loadFree(){
   const fc = await api(FREE_URL, { where: '1=1', outFields: 'OBJECTID,PARKOVISKO,BOX,TYP,ULICA,EditDate', outSR: 4326, f: 'geojson' });
   freeLayer.clearLayers();
-  freeById.clear();
+  freeIds.clear();
   for (const f of fc.features){
     const id = f.properties.OBJECTID, center = centroid(f.geometry);
     if (!center) continue;
     const poly = L.geoJSON(f, { style: () => styleFor('free') });
     const pin = L.circleMarker(center, { radius: 6, color: '#2b2100', weight: 2, fillColor: cssVar('--st-free'), fillOpacity: 1 });
-    const group = L.featureGroup([poly, pin]).bindPopup(() => popupFor(f.properties, 'free', center)).addTo(freeLayer);
-    freeById.set(id, { feature: f, center, layer: group });
+    L.featureGroup([poly, pin]).bindPopup(() => popupFor(f.properties, 'free', center)).addTo(freeLayer);
+    freeIds.add(id);
   }
 }
 
@@ -369,21 +338,21 @@ function setSheet(open){
   $('info').setAttribute('aria-expanded', open);
 }
 
-async function search(lat, lon, source, accuracy){
+// Doesn't move the map; callers that jump to a new point set the view first.
+// note: shown on the map instead of the box count once the search finishes.
+async function search(lat, lon, source, accuracy, note){
   const seq = ++searchSeq;
-  const r = Number($('radius').value);
+  const r = RADIUS;
   here = [lat, lon];
-  last = [lat, lon, source, accuracy];
   searchLayer.clearLayers();
-  const ring = L.circle(here, { radius: r, color: cssVar('--accent'), weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(searchLayer);
+  L.circle(here, { radius: r, color: cssVar('--accent'), weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(searchLayer);
   if (source === 'gps' && accuracy) L.circle(here, { radius: accuracy, stroke: false, fillColor: '#2f7de1', fillOpacity: .15, interactive: false }).addTo(searchLayer);
   L.circleMarker(here, { radius: 7, color: '#fff', weight: 3, fillColor: source === 'gps' ? '#2f7de1' : '#16201a', fillOpacity: 1, interactive: false }).addTo(searchLayer);
-  map.fitBounds(ring.getBounds(), { padding: [12, 12], maxZoom: 19 });
 
   const where = source === 'gps' ? 'vašej polohy' + (accuracy ? ' (±' + Math.round(accuracy) + ' m)' : '')
-              : source === 'link' ? 'bodu z odkazu' : 'stredu mapy';
+              : source === 'link' ? 'bodu z odkazu' : source === 'start' ? 'centra Dúbravky' : 'stredu mapy';
   setStatus('Načítavam boxy v okruhu ' + r + ' m od ' + where + '…', 'busy');
-  if (distance(here, DUBRAVKA) > 4000) setStatus('Ste mimo Dúbravky. Evidencia pokrýva len MČ Bratislava-Dúbravka.', 'error');
+  if (!inDubravka(here)) setStatus('Ste mimo Dúbravky. Evidencia pokrýva len MČ Bratislava-Dúbravka.', 'error');
 
   try {
     const features = await loadBoxes(lat, lon, r);
@@ -400,87 +369,67 @@ async function search(lat, lon, source, accuracy){
     }
     for (const k in counts) $('n-' + k).textContent = counts[k];
     const shown = Object.values(counts).reduce((a, b) => a + b, 0);
-    if (distance(here, DUBRAVKA) <= 4000)
-      setStatus(shown + ' boxov v okruhu ' + r + ' m od ' + where + '. Ťuknite na box pre detail.', 'ok');
-    renderNear(r);
+    if (inDubravka(here))
+      setStatus(note || shown + ' boxov v okruhu ' + r + ' m od ' + where + '. Ťuknite na box pre detail.', note ? 'error' : 'ok');
   } catch (e){
     if (seq !== searchSeq) return;
     setStatus('Evidenciu sa nepodarilo načítať: ' + e.message + ' Skúste to znova.', 'error');
   }
 }
 
-function renderNear(r){
-  const list = $('near'), empty = $('near-empty');
-  list.replaceChildren();
-  if (!here || !freeById.size){ empty.hidden = false; empty.textContent = 'Zoznam boxov bez nájomcu sa nepodarilo načítať.'; return; }
-  const sorted = [...freeById.values()].map(v => ({ ...v, d: distance(here, v.center) })).sort((a, b) => a.d - b.d);
-  const inside = sorted.filter(v => v.d <= r).length;
-  empty.hidden = inside > 0;
-  empty.textContent = 'V okruhu ' + r + ' m nie je žiadny. Najbližšie sú:';
-  for (const v of sorted.slice(0, Math.max(NEAR_COUNT, inside))){
-    const p = v.feature.properties;
-    const li = document.createElement('li');
-    const b = document.createElement('button');
-    b.type = 'button';
-    const what = document.createElement('span');
-    what.className = 'what';
-    const name = document.createElement('b');
-    name.textContent = (p.PARKOVISKO || p.ULICA) + (p.BOX ? ' · box ' + p.BOX : '');
-    const sub = document.createElement('small');
-    sub.textContent = (p.ULICA || '').trim() + ' · upravené ' + fmtDate(p.EditDate);
-    what.append(name, sub);
-    const dist = document.createElement('span');
-    dist.className = 'dist' + (v.d > r ? ' out' : '');
-    dist.textContent = fmtDist(v.d);
-    b.append(what, dist);
-    b.addEventListener('click', () => {
-      setSheet(false);
-      map.flyTo(v.center, 20, { duration: .8 });
-      map.once('moveend', () => v.layer.openPopup(v.center));
-    });
-    li.append(b);
-    list.append(li);
-  }
+function showDubravka(note){
+  map.setView(DUBRAVKA, CLOSE_ZOOM);
+  search(DUBRAVKA[0], DUBRAVKA[1], 'start', null, note);
 }
 
-function locate(){
+// On the first load, a missing position or one outside Dúbravka opens the district centre instead of an empty map.
+function locate(firstLoad){
   const btn = $('locate');
+  const fail = reason => firstLoad
+    ? showDubravka(reason + ' Zobrazujem centrum Dúbravky – posuňte mapu a ťuknite na „Hľadať tu“.')
+    : setStatus(reason + ' Posuňte mapu a ťuknite na „Hľadať tu“.', 'error');
   if (!('geolocation' in navigator) || !window.isSecureContext){
-    setStatus('Poloha funguje len na stránke otvorenej cez https://. Posuňte mapu a ťuknite na „Hľadať tu“.', 'error');
+    fail('Poloha funguje len na stránke otvorenej cez https://.');
     return;
   }
   btn.disabled = true;
   setStatus('Zisťujem polohu…', 'busy');
   navigator.geolocation.getCurrentPosition(pos => {
     btn.disabled = false;
-    search(pos.coords.latitude, pos.coords.longitude, 'gps', pos.coords.accuracy);
+    const p = [pos.coords.latitude, pos.coords.longitude];
+    if (!inDubravka(p)){
+      // Searching there would only show an empty map, so stay put and say why.
+      const warn = 'Ste mimo MČ Bratislava-Dúbravka. Pre hľadanie podľa polohy sa presuňte do Dúbravky.';
+      if (firstLoad) showDubravka(warn + ' Zatiaľ zobrazujem jej centrum.');
+      else setStatus(warn, 'error');
+      return;
+    }
+    map.setView(p, Math.max(map.getZoom(), CLOSE_ZOOM));
+    search(p[0], p[1], 'gps', pos.coords.accuracy);
   }, err => {
     btn.disabled = false;
-    const msg = err.code === 1 ? 'Prístup k polohe je zakázaný. Povoľte ho v nastaveniach prehliadača,'
-              : err.code === 3 ? 'Zisťovanie polohy trvalo príliš dlho,'
-              : 'Polohu sa nepodarilo zistiť,';
-    setStatus(msg + ' alebo posuňte mapu a ťuknite na „Hľadať tu“.', 'error');
+    fail(err.code === 1 ? 'Prístup k polohe je zakázaný, povoľte ho v nastaveniach prehliadača.'
+       : err.code === 3 ? 'Zisťovanie polohy trvalo príliš dlho.'
+       : 'Polohu sa nepodarilo zistiť.');
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 });
 }
 
-$('locate').addEventListener('click', locate);
+$('locate').addEventListener('click', () => locate(false));
 $('here').addEventListener('click', () => { const c = map.getCenter(); search(c.lat, c.lng, 'map'); });
-$('radius').addEventListener('change', () => { if (last) search(...last); });
 $('info').addEventListener('click', () => setSheet(!$('sheet').classList.contains('open')));
 $('sheet-close').addEventListener('click', () => setSheet(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape') setSheet(false); });
 
 // ---- Start ----
 const q = new URLSearchParams(location.search);
-const qLat = parseFloat(q.get('lat')), qLon = parseFloat(q.get('lon')), qR = q.get('r');
-if (qR && [...$('radius').options].some(o => o.value === qR)) $('radius').value = qR;
+const qLat = parseFloat(q.get('lat')), qLon = parseFloat(q.get('lon'));
 
 loadFreshness();
 loadFree()
   .catch(() => {})
   .then(() => {
-    if (Number.isFinite(qLat) && Number.isFinite(qLon)) search(qLat, qLon, 'link');
-    else locate();
+    if (Number.isFinite(qLat) && Number.isFinite(qLon)){ map.setView([qLat, qLon], CLOSE_ZOOM); search(qLat, qLon, 'link'); }
+    else locate(true);
   });
 })();
 </script>
