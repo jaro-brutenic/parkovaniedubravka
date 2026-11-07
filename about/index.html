@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Is this parking space in Dúbravka still reserved? | Dúbravka parking map</title>
+<meta name="description" content="A white cross and a licence plate sign in Bratislava-Dúbravka don't always mean a valid reservation. This unofficial map shows which reserved spaces are actually rented.">
+<meta name="author" content="Jaroslav Brutenic">
+<meta name="theme-color" content="#1e6b47">
+<link rel="canonical" href="https://parkovanie.brutenic.sk/about/">
+<link rel="alternate" hreflang="sk" href="https://parkovanie.brutenic.sk/o-aplikacii/">
+<link rel="alternate" hreflang="en" href="https://parkovanie.brutenic.sk/about/">
+<link rel="alternate" hreflang="x-default" href="https://parkovanie.brutenic.sk/o-aplikacii/">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Dúbravka parking map">
+<meta property="og:locale" content="en_GB">
+<meta property="og:url" content="https://parkovanie.brutenic.sk/about/">
+<meta property="og:title" content="Is this parking space in Dúbravka still reserved?">
+<meta property="og:description" content="An unofficial map that shows which reserved parking spaces in Bratislava-Dúbravka are rented and which markings are just leftovers.">
+<meta property="og:image" content="https://parkovanie.brutenic.sk/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="../page.css">
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="../"><span>Bratislava-Dúbravka</span>Parking spaces</a>
+  <a class="lang" href="../o-aplikacii/" hreflang="sk" lang="sk">Slovensky</a>
+</header>
+
+<main>
+  <h1>Is this parking space still reserved?</h1>
+  <p class="lead">In Bratislava-Dúbravka, many parking spaces still have a white cross and a licence plate sign long after the rental has ended. This unofficial map uses your location to show which spaces nearby are rented according to the district's public records, and which markings are just leftovers from an old reservation.</p>
+  <a class="cta" href="../">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    Open the map
+  </a>
+
+  <figure>
+    <img src="../og.jpg" width="1200" height="630" loading="lazy" alt="Aerial map of a car park in Dúbravka: red rented spaces, yellow reserved spaces without a tenant and green public spaces.">
+    <figcaption>The map around a chosen point. The app itself is in Slovak, but the colours speak for themselves.</figcaption>
+  </figure>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>Open the map on your phone and allow location access. It zooms in on your surroundings and loads all spaces within 200 m.</li>
+    <li>If you don't share your location, or you're somewhere else right now, move the map to where you want to park and tap <span lang="sk">„Hľadať tu“</span> (Search here).</li>
+    <li>Tap a space to see its record: type, car park, space number and when the record was last updated.</li>
+  </ol>
+
+  <h2>What the colours mean</h2>
+  <ul class="colors">
+    <li><span class="sw" style="--c:var(--st-rented)"></span><span><b>Red</b> – a reserved space with a registered tenant. Don't park here.</span></li>
+    <li><span class="sw" style="--c:var(--st-free)"></span><span><b>Yellow</b> – a reserved space with no tenant on record.</span></li>
+    <li><span class="sw" style="--c:var(--st-public)"></span><span><b>Green</b> – a public space. A white cross or licence plate sign here is a leftover from an old reservation.</span></li>
+    <li><span class="sw" style="--c:var(--st-ztp)"></span><span><b>Blue</b> – a space for holders of a disabled parking card.</span></li>
+  </ul>
+
+  <div class="note">
+    <h2>The sign wins, not the map</h2>
+    <p>As long as a "reserved parking" traffic sign is standing, it is legally binding, even if the space has no tenant on record. Use the map as evidence when asking the district office to remove an outdated sign.</p>
+  </div>
+
+  <h2>Where the data comes from</h2>
+  <p>Every time you open it, the map loads the public parking space register of the Bratislava-Dúbravka district, the same data behind the district's <a href="https://experience.arcgis.com/experience/76efb37084c94cdebe96223008a90522">official transport and parking map</a>. The register covers Dúbravka only. Aerial photos: orthophoto 2026 © MČ Bratislava-Dúbravka.</p>
+
+  <h2>Who made it</h2>
+  <p>The app was made by <a href="https://www.linkedin.com/in/jaroslavbrutenic/" rel="author">Jaroslav Brutenic</a>. It is not a service of the district office. The source code is open on <a href="https://github.com/jaro-brutenic/parkovaniedubravka">GitHub</a>. If your district publishes similar parking data, get in touch.</p>
+</main>
+
+<footer>
+  <p>Unofficial app · <a href="../">Open the map</a> · <a href="../o-aplikacii/" hreflang="sk" lang="sk">Slovensky</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://parkovanie.brutenic.sk/sitemap.xml
